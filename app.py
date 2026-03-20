@@ -1,24 +1,26 @@
-import os
-import subprocess
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import subprocess
+import os
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # อนุญาตให้มือถือออมสินยิงคำสั่งเข้ามาได้
 
 @app.route('/terminal', methods=['POST'])
 def terminal():
     try:
-        data = request.json
-        cmd = data.get('command', '')
-        # รันคำสั่งจริง
-        output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, timeout=5)
-        return jsonify({"result": output.decode('utf-8')})
+        data = request.get_json()
+        command = data.get('command')
+        
+        # รันคำสั่ง Linux ใน Cloud Shell
+        result = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
+        return jsonify({'result': result.decode('utf-8')})
+    except subprocess.CalledProcessError as e:
+        return jsonify({'result': e.output.decode('utf-8')})
     except Exception as e:
-        error_msg = getattr(e, 'output', str(e))
-        if isinstance(error_msg, bytes): error_msg = error_msg.decode('utf-8')
-        return jsonify({"result": f"Error: {error_msg}"}), 400
+        return jsonify({'result': str(e)})
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+if __name__ == '__main__':
+    # Google Cloud Shell มักใช้ Port 8080 หรือ 5000
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
